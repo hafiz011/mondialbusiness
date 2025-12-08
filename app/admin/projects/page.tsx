@@ -36,8 +36,11 @@ const FormDataPage: React.FC = () => {
       try {
         const response = await axios.get<FormDataType[]>("/Formdata/all");
         const data = Array.isArray(response.data) ? response.data : [];
-        // Sort by newest first
-        data.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        data.sort(
+          (a, b) =>
+            new Date(b.createdAt || 0).getTime() -
+            new Date(a.createdAt || 0).getTime()
+        );
         setFormData(data);
         setLoading(false);
       } catch (err: any) {
@@ -60,6 +63,7 @@ const FormDataPage: React.FC = () => {
   }, [formData, search]);
 
   const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE);
+
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     return filteredData.slice(start, start + ITEMS_PER_PAGE);
@@ -113,7 +117,7 @@ const FormDataPage: React.FC = () => {
   };
 
   const goToPage = (page: number) => {
-    if (page >= 1 && page <= totalPages) setPage(page);
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
   if (loading) {
@@ -139,7 +143,9 @@ const FormDataPage: React.FC = () => {
     <div className="p-6 max-w-full mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Form Submissions</h1>
-        <p className="text-gray-600 mt-2">Total: {formData.length} submission{formData.length !== 1 ? "s" : ""}</p>
+        <p className="text-gray-600 mt-2">
+          Total: {formData.length} submission{formData.length !== 1 ? "s" : ""}
+        </p>
       </div>
 
       {/* Search & Actions */}
@@ -152,7 +158,7 @@ const FormDataPage: React.FC = () => {
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
-              setPage(1);
+              setCurrentPage(1);
             }}
             className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
           />
