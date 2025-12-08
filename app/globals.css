@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: monospace;
+  --color-brand-cyan: #36E0F8;
+  --color-brand-red: #DA2824;
+  --color-brand-dark: #151821;
+  --color-brand-black: #0C0F12;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.5s ease-out forwards;
+}
+
+.bg-brand-gradient {
+  background: linear-gradient(90deg, var(--color-brand-red) 0%, var(--color-brand-cyan) 100%);
+}
+
+.text-brand-gradient {
+  background: linear-gradient(90deg, var(--color-brand-red) 0%, var(--color-brand-cyan) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
