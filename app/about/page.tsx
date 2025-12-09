@@ -66,7 +66,7 @@ export default function AboutPage() {
 
         .hero-section {
             background-image: 
-                linear-gradient(to right, rgba(255, 255, 255, 0.95) 20%, rgba(255, 255, 255, 0.8) 100%),
+                linear-gradient(to right, rgba(255, 255, 255, 0.81) 20%, rgba(255, 255, 255, 0.72) 100%),
                 url('https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072&auto=format&fit=crop');
             background-size: cover;
             background-position: center center;

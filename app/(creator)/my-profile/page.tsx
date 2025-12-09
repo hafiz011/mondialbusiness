@@ -2,11 +2,119 @@
 
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import axios from "@/lib/axios";
+import { toast } from "react-hot-toast" // optional, or use your own toast
+
+// Define types according to your backend
+interface Address {
+  address: string
+  city: string
+  country: string
+}
+
+interface UserProfile {
+  id: string
+  name: string
+  email: string
+  phoneNumber: string | null
+  bio: string | null
+  address: Address | null
+  // add ImagePath if you want to show avatar later
+}
 
 export default function MyProfile() {
-    // Mock state
-    const [projects, setProjects] = useState([
+    // Profile state
+    const [profile, setProfile] = useState<UserProfile | null>(null)
+    const [loading, setLoading] = useState(true)
+    const [saving, setSaving] = useState(false)
+
+    // Form state (editable fields)
+    const [formData, setFormData] = useState({
+        name: "",
+        phone: "",
+        bio: "",
+        address: {
+            address: "",
+            city: "",
+            country: ""
+        }
+    })
+
+    // Fetch profile on mount
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const res = await axios.get("/auth/account") // adjust base URL if needed
+                const data = res.data
+
+                setProfile(data)
+                setFormData({
+                    name: data.name || "",
+                    phone: data.phoneNumber || "",
+                    bio: data.bio || "",
+                    address: {
+                        address: data.address?.address || "",
+                        city: data.address?.city || "",
+                        country: data.address?.country || ""
+                    }
+                })
+            } catch (err: any) {
+                console.error(err)
+                toast.error(err.response?.data?.message || "Failed to load profile")
+            } finally {
+                setLoading(false)
+            }
+        }
+
+        fetchProfile()
+    }, [])
+
+    // Handle input changes
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value } = e.target
+        if (name.startsWith("address.")) {
+            const field = name.split(".")[1]
+            setFormData(prev => ({
+                ...prev,
+                address: { ...prev.address, [field]: value }
+            }))
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }))
+        }
+    }
+
+    // Submit updated profile
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setSaving(true)
+
+        try {
+            const payload = {
+                name: formData.name || null,
+                phone: formData.phone || null,
+                bio: formData.bio || null,
+                address: {
+                    address: formData.address.address || null,
+                    city: formData.address.city || null,
+                    country: formData.address.country || null
+                }
+            }
+
+            await axios.put("/auth/account", payload)
+
+            toast.success("Profile updated successfully!")
+            // Optionally refetch profile if backend does extra processing
+        } catch (err: any) {
+            console.error(err)
+            toast.error(err.response?.data?.message || "Failed to update profile")
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    // Mock projects (unchanged)
+    const [projects] = useState([
         { id: "1", title: "Eco-Friendly Straws", status: "published", date: "2023-10-15" },
         { id: "2", title: "AI Personal Assistant", status: "draft", date: "2023-11-02" }
     ])
@@ -19,41 +127,102 @@ export default function MyProfile() {
             </div>
 
             <div className="grid lg:grid-cols-3 gap-8">
-                {/* Left Column: Profile Info */}
+                {/* Left Column: Profile Info - NOW CONNECTED TO API */}
                 <div className="lg:col-span-1 space-y-8">
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                         <h2 className="text-xl font-bold text-gray-900 mb-4">Profile Information</h2>
-                        <form className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                                <input type="text" defaultValue="John Doe" className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                                <input type="email" defaultValue="john@example.com" readOnly className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                                <input type="text" defaultValue="USA" className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
-                                <input type="text" defaultValue="New York" className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500" />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
-                                <textarea rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <input type="checkbox" id="publicProfile" defaultChecked className="rounded text-blue-600 focus:ring-blue-500" />
-                                <label htmlFor="publicProfile" className="text-sm text-gray-700">Public Profile</label>
-                            </div>
-                            <Button type="submit" className="w-full">Save Profile</Button>
-                        </form>
+
+                        {loading ? (
+                            <div className="text-center py-8 text-gray-500">Loading profile...</div>
+                        ) : (
+                            <form onSubmit={handleSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        value={formData.name}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                                    <input
+                                        type="email"
+                                        value={profile?.email || ""}
+                                        readOnly
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                                    <input
+                                        type="text"
+                                        name="phone"
+                                        value={formData.phone}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                                    <input
+                                        type="text"
+                                        name="address.address"
+                                        value={formData.address.address}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                                    <input
+                                        type="text"
+                                        name="address.city"
+                                        value={formData.address.city}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                                    <input
+                                        type="text"
+                                        name="address.country"
+                                        value={formData.address.country}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                                    <textarea
+                                        name="bio"
+                                        rows={3}
+                                        value={formData.bio}
+                                        onChange={handleChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                </div>
+
+                                {/* You can add public profile toggle later if needed */}
+
+                                <Button type="submit" className="w-full" disabled={saving}>
+                                    {saving ? "Saving..." : "Save Profile"}
+                                </Button>
+                            </form>
+                        )}
                     </div>
                 </div>
 
-                {/* Right Column: Ideas & Projects */}
+                {/* Right Column: Ideas & Projects - UNCHANGED */}
                 <div className="lg:col-span-2 space-y-8">
                     {/* Create New Idea */}
                     <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">

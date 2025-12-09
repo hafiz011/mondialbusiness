@@ -49,7 +49,14 @@ export default function Pricing() {
                         <li className="flex gap-3 text-brand-cyan font-medium">✓ 50% discount on all services</li>
                     </ul>
                     <Link href="/contact" className="w-full">
-                        <Button variant="primary" className="w-full bg-brand-dark hover:bg-brand-dark/90" size="lg">Upgrade to Premium</Button>
+                        {/* <Button variant="primary" className="w-full bg-brand-dark hover:bg-brand-dark/90" size="lg">Upgrade to Premium</Button> */}
+                        <Button 
+                            variant="default" 
+                            className="w-full bg-brand-dark hover:bg-brand-dark/90" 
+                            size="lg"
+                            >
+                            Upgrade to Premium
+                            </Button>
                     </Link>
                 </div>
             </div>

@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import axios from "@/lib/axios";
 import { saveAs } from "file-saver";
-import { Download, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye, EyeOff } from "lucide-react";
+import { Download, Search, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Eye, EyeOff, Trash } from "lucide-react";
 
 interface FormDataType {
   id: string;
@@ -77,6 +77,21 @@ const FormDataPage: React.FC = () => {
       return next;
     });
   };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this form submission?")) return;
+
+    try {
+      await axios.delete(`/Formdata/${id}`);
+
+      setFormData((prev) => prev.filter((item) => item.id !== id));
+    } catch (error) {
+      console.error(error);
+      alert("Failed to delete data.");
+    }
+  };
+
+
 
   const handleDownloadCSV = () => {
     if (formData.length === 0) return;
@@ -217,14 +232,23 @@ const FormDataPage: React.FC = () => {
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-center">
+                     
+                        <td className="px-6 py-4 text-center flex justify-center gap-4">
                           <button
                             onClick={() => toggleRow(item.id)}
                             className="text-blue-600 hover:text-blue-800 transition"
                           >
                             {isExpanded ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                           </button>
+
+                          <button
+                            onClick={() => handleDelete(item.id)}
+                            className="text-red-600 hover:text-red-800 transition"
+                          >
+                            <Trash className="w-5 h-5" />
+                          </button>
                         </td>
+
                       </tr>
 
                       {/* Expanded Row */}

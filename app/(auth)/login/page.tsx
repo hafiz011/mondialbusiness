@@ -25,6 +25,18 @@ export default function Login() {
       const { token, user } = await loginApi(email, password);
       login(token, user);
 
+      if (user.roles.includes("Admin")) {
+        router.push("/admin");
+        return;
+      }
+      if (user.roles.includes("Investor")) {
+        router.push("/investors");
+        return;
+      }
+      // if (user.roles.includes("User")) {
+      //       router.push("/my-profile");
+      //       return;
+      //     }
       router.push("/my-profile");
     } catch (error: any) {
       setErrorMsg(error.response?.data?.message || "Invalid email or password");
