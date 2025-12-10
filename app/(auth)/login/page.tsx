@@ -33,10 +33,10 @@ export default function Login() {
         router.push("/investors");
         return;
       }
-      // if (user.roles.includes("User")) {
-      //       router.push("/my-profile");
-      //       return;
-      //     }
+      if (user.roles.includes("Creator")) {
+            router.push("/my-profile");
+            return;
+          }
       router.push("/my-profile");
     } catch (error: any) {
       setErrorMsg(error.response?.data?.message || "Invalid email or password");

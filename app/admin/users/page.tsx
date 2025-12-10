@@ -1,4 +1,3 @@
-// app/admin/users/page.tsx
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -36,8 +35,9 @@ interface User {
   email: string;
   phoneNumber: string | null;
   user: string;
+  lockoutEnd: string | null;
+  createdOn: string;
   address: Address | null;
-  lockoutEnd: string | null; 
 }
 
 export default function AdminUsersPage() {
@@ -47,6 +47,11 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [lockingId, setLockingId] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
+
+  // Available roles
+  const availableRoles = ["Admin", "Investor", "Creator"];
 
   // Fetch all users
   const fetchUsers = async () => {
@@ -67,7 +72,7 @@ export default function AdminUsersPage() {
     fetchUsers();
   }, []);
 
-  // Search functionality
+  // Search
   useEffect(() => {
     const term = search.toLowerCase();
     const filtered = users.filter(
@@ -81,7 +86,7 @@ export default function AdminUsersPage() {
 
   // Delete User
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this user? This cannot be undone.")) return;
+    if (!confirm("Are you sure you want to delete this user?")) return;
 
     setDeletingId(id);
     try {
@@ -95,7 +100,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  // Toggle Login Lock
+  // Lock / Unlock Login
   const toggleLock = async (id: string, shouldLock: boolean) => {
     setLockingId(id);
     try {
@@ -107,7 +112,7 @@ export default function AdminUsersPage() {
       );
 
       toast.success(shouldLock ? "Login disabled" : "Login enabled");
-      fetchUsers(); // refresh list
+      fetchUsers();
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Action failed");
     } finally {
@@ -115,8 +120,33 @@ export default function AdminUsersPage() {
     }
   };
 
+  // Assign Role
+  const assignRole = async (userId: string) => {
+    const selectedRole = selectedRoles[userId];
+
+    if (!selectedRole) {
+      toast.error("Please select a role");
+      return;
+    }
+
+    setAssigningId(userId);
+
+    try {
+      await axios.post(
+        `/admin/assign-role?userId=${userId}&roleName=${selectedRole}`
+      );
+
+      toast.success("Role assigned successfully");
+      fetchUsers();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to assign role");
+    } finally {
+      setAssigningId(null);
+    }
+  };
+
   return (
-    <div className="container mx-auto px-4 py-12">
+    <div className="container mx-auto px-1 py-10">
       {/* Header */}
       <div className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -124,7 +154,6 @@ export default function AdminUsersPage() {
           <p className="text-gray-600 mt-1">{filteredUsers.length} users</p>
         </div>
 
-        {/* Search Box */}
         <div className="relative w-full sm:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <Input
@@ -152,90 +181,130 @@ export default function AdminUsersPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Role</TableHead>
+                <TableHead>Assign Role</TableHead>
                 <TableHead>Location</TableHead>
+                <TableHead>Created At</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
-              {filteredUsers.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-10 text-gray-500">
-                    No users found
+              {filteredUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.phoneNumber || "—"}</TableCell>
+
+                  {/* Current Role */}
+                  <TableCell>
+                    <Badge variant={user.user === "admin" ? "default" : "secondary"}>
+                      {user.user || "creator"}
+                    </Badge>
+                  </TableCell>
+
+                  {/* Assign Role Dropdown */}
+                  <TableCell className="flex gap-2 items-center">
+                    <select
+                      value={selectedRoles[user.id] || ""}
+                      onChange={(e) =>
+                        setSelectedRoles((prev) => ({
+                          ...prev,
+                          [user.id]: e.target.value,
+                        }))
+                      }
+                      className="border rounded px-2 py-1 text-sm"
+                    >
+                      <option value="">Select Role</option>
+                      {availableRoles.map((role) => (
+                        <option key={role} value={role}>
+                          {role}
+                        </option>
+                      ))}
+                    </select>
+
+                    <Button
+                      size="sm"
+                      onClick={() => assignRole(user.id)}
+                      disabled={assigningId === user.id}
+                    >
+                      {assigningId === user.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        "Assign"
+                      )}
+                    </Button>
+                  </TableCell>
+
+                  {/* Location */}
+                  <TableCell>
+                    {user.address
+                      ? [user.address.city, user.address.country]
+                          .filter(Boolean)
+                          .join(", ")
+                      : "—"}
+                  </TableCell>
+
+                  <TableCell>
+                    {user.createdOn
+                      ? new Date(user.createdOn).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "—"}
+                  </TableCell>
+
+
+                  {/* Status */}
+                  <TableCell>
+                    <Badge
+                      variant="outline"
+                      className={
+                        user.lockoutEnd
+                          ? "text-red-700 border-red-300 bg-red-50"
+                          : "text-green-700 border-green-300 bg-green-50"
+                      }
+                    >
+                      {user.lockoutEnd ? "Locked" : "Active"}
+                    </Badge>
+                  </TableCell>
+
+                  {/* Actions */}
+                  <TableCell className="text-right space-x-1">
+                    {/* Lock/Unlock */}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => toggleLock(user.id, !user.lockoutEnd)}
+                      disabled={lockingId === user.id}
+                    >
+                      {lockingId === user.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : user.lockoutEnd ? (
+                        <Lock className="w-4 h-4" />
+                      ) : (
+                        <Unlock className="w-4 h-4" />
+                      )}
+                    </Button>
+
+                    {/* Delete */}
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => handleDelete(user.id)}
+                      disabled={deletingId === user.id}
+                    >
+                      {deletingId === user.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-4 h-4" />
+                      )}
+                    </Button>
                   </TableCell>
                 </TableRow>
-              ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name || "—"}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.phoneNumber || "—"}</TableCell>
-
-                    {/* Role Badge */}
-                    <TableCell>
-                      <Badge variant={user.user === "admin" ? "default" : "secondary"}>
-                        {user.user || "creator"}
-                      </Badge>
-                    </TableCell>
-
-                    {/* Location */}
-                    <TableCell>
-                      {user.address
-                        ? [user.address.city, user.address.country].filter(Boolean).join(", ") || "—"
-                        : "—"}
-                    </TableCell>
-
-                    {/* Status Badge - Fixed for Build */}
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={
-                          user.lockoutEnd
-                            ? "text-red-700 border-red-300 bg-red-50"
-                            : "text-green-700 border-green-300 bg-green-50"
-                        }
-                      >
-                        {user.lockoutEnd ? "Locked" : "Active"}
-                      </Badge>
-                    </TableCell>
-
-                    {/* Actions */}
-                    <TableCell className="text-right space-x-1">
-                      {/* Lock / Unlock */}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => toggleLock(user.id, !user.lockoutEnd)}
-                        disabled={lockingId === user.id}
-                      >
-                        {lockingId === user.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : user.lockoutEnd ? (
-                          <Unlock className="w-4 h-4" />
-                        ) : (
-                          <Lock className="w-4 h-4" />
-                        )}
-                      </Button>
-
-                      {/* Delete */}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        onClick={() => handleDelete(user.id)}
-                        disabled={deletingId === user.id}
-                      >
-                        {deletingId === user.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
+              ))}
             </TableBody>
           </Table>
         )}
