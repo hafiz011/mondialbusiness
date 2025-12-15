@@ -1,5 +1,13 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #f9fafb;
+  color: #1f2937;
+}
 
 @custom-variant dark (&:is(.dark *));
 
