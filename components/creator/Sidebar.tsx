@@ -14,8 +14,8 @@ import {
 
 const menu = [
   { title: "Dashboard", href: "/creator-dashboard", icon: LayoutDashboard },
-  { title: "My Ideas", href: "/my-ideas", icon: Lightbulb },
-  { title: "Create Idea", href: "/create-idea", icon: PlusCircle },
+  { title: "My Ideas", href: "/ideas", icon: Lightbulb },
+  { title: "Create Idea", href: "/ideas/new", icon: PlusCircle },
   { title: "Investors", href: "/funding-investors", icon: Users },
   { title: "Wallet & Transactions", href: "/wallet-transactions", icon: Wallet },
   { title: "Profile", href: "/profile", icon: Settings },

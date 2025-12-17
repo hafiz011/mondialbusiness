@@ -34,7 +34,7 @@ export default function Login() {
         return;
       }
       if (user.roles.includes("Creator")) {
-            router.push("/my-profile");
+            router.push("/creator-dashboard");
             return;
           }
       router.push("/my-profile");
