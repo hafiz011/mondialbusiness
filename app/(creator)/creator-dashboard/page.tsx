@@ -9,78 +9,194 @@ import { Progress } from "@/components/ui/progress"
 import { Lightbulb, TrendingUp, Users, Wallet, Plus, ArrowRight } from "lucide-react"
 import Link from "next/link"
 
-import { getCreatorIdeas, getCreatorInvestments } from "@/lib/api/creator"
-import type { BusinessIdea } from "@/types/idea"
-import type { Investment } from "@/types/investment"
+import { getCreatorDashboard } from "@/lib/api/creator"
+import type { CreatorDashboardResponse } from "@/types/creator-dashboard"
+
 
 export default function DashboardPage() {
-  const [ideas, setIdeas] = useState<BusinessIdea[]>([])
-  const [investments, setInvestments] = useState<Investment[]>([])
+const [data, setData] = useState<CreatorDashboardResponse | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const loadDashboard = async () => {
-      try {
-        const [ideasRes, investmentsRes] = await Promise.all([
-          getCreatorIdeas(),
-          getCreatorInvestments(),
-        ])
-
-        setIdeas(ideasRes)
-        setInvestments(investmentsRes)
-      } catch (err) {
-        console.error("Dashboard load failed", err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadDashboard()
+    getCreatorDashboard()
+      .then(setData)
+      .finally(() => setLoading(false))
   }, [])
 
   if (loading) {
     return <div className="p-6 text-muted-foreground">Loading dashboard...</div>
   }
+  if (!data) return <p className="p-6">Failed to load dashboard</p>
 
-  const totalIdeas = ideas.length
-  const totalFundRaised = ideas.reduce((acc, i) => acc + i.totalRaised, 0)
-  const activeInvestors = new Set(investments.map(i => i.investorName)).size
-  const walletBalance = 145000 // later from API
 
   return (
     <div className="flex-1 overflow-y-auto p-6 space-y-6">
       {/* KPI */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Ideas" value={totalIdeas} icon={Lightbulb} />
-        <StatCard title="Total Fund Raised" value={`$${totalFundRaised / 1000}K`} icon={TrendingUp} />
-        <StatCard title="Active Investors" value={activeInvestors} icon={Users} />
-        <StatCard title="Wallet Balance" value={`$${walletBalance / 1000}K`} icon={Wallet} />
+        <StatCard title="Total Ideas" value={data.totalIdeas} icon={Lightbulb} trend={{ value: "+1 this month", positive: true }} />
+        <StatCard title="Total Fund Raised" value={`$${data.totalFundRaised / 1000}K`} icon={TrendingUp} trend={{ value: "+32% from last month", positive: true }}  />
+        <StatCard title="Active Investors" value={data.activeInvestors} icon={Users} trend={{ value: "+3 this week", positive: true }} />
+        <StatCard title="Wallet Balance" value={`$${data.walletBalance / 1000}K`} icon={Wallet} />
       </div>
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 
+    
       {/* Funding progress */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4">Funding Progress</h2>
+      <Card className="lg:col-span-2 p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-lg font-semibold mb-4">Funding Progress</h2>
+            <Link href="/ideas">
+                <Button variant="ghost" size="sm">
+                    View All
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+            </Link>
+        </div>
+        <div className="space-y-6">
+          {data.ideas.slice(0, 2).map((idea) => {
+            const progress = (idea.totalRaised / idea.fundingRequired) * 100
 
-        {ideas.slice(0, 2).map((idea) => {
-          const progress = (idea.totalRaised / idea.fundingRequired) * 100
-
-          return (
-            <div key={idea.id} className="space-y-3 mb-6">
-              <div className="flex justify-between">
-                <div>
-                  <p className="font-medium">{idea.title}</p>
-                  <p className="text-sm text-muted-foreground">
-                    ${idea.totalRaised} raised of ${idea.fundingRequired}
-                  </p>
+            return (
+              <div key={idea.id} className="space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-medium text-foreground">{idea.title}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      ${idea.totalRaised} raised of ${idea.fundingRequired}
+                    </p>
+                  </div>
+                  <Badge>{idea.status}</Badge>
                 </div>
-                <Badge>{idea.status}</Badge>
+                <div className="space-y-2">
+                       <Progress value={progress} className="h-2" />
+                       <div className="flex justify-between text-xs text-muted-foreground">
+                         <span>{progress.toFixed(1)}% funded</span>
+                         <span>{idea.equityOffered}% equity offered</span>
+                       </div>
+                </div>
+                {/* <Progress value={progress} /> */}
               </div>
-              <Progress value={progress} />
+            )
+          })}
+        </div>
+      </Card>
+      {/* Recent Activities */}
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-6">Recent Activities</h2>
+        <div className="space-y-4">
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 mt-1">
+              <div className="h-2 w-2 rounded-full bg-primary" />
             </div>
-          )
-        })}
+            <div>
+              <p className="text-sm text-foreground">David Park invested $150,000 in AI-Powered Financial Assistant</p>
+              <p className="text-xs text-muted-foreground mt-1">2 hours ago</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 mt-1">
+              <div className="h-2 w-2 rounded-full bg-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-foreground">Series A round opened for AI-Powered Financial Assistant</p>
+              <p className="text-xs text-muted-foreground mt-1">5 days ago</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 mt-1">
+
+              <div className="h-2 w-2 rounded-full bg-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-foreground">Milestone User Acquisition completed</p>
+              <p className="text-xs text-muted-foreground mt-1">1 week ago</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex-shrink-0 mt-1">
+              <div className="h-2 w-2 rounded-full bg-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-foreground">New business idea submitted for review</p>
+              <p className="text-xs text-muted-foreground mt-1">2 weeks ago</p>
+            </div>
+          </div>
+        </div>
       </Card>
     </div>
+    {/* Quick Actions & Recent Investors */}
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Quick Actions */}
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-6">Quick Actions</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <Link href="/ideas/new">
+            <Button className="w-full bg-transparent" variant="outline">
+              <Plus className="mr-2 h-4 w-4" />
+              New Idea
+            </Button>
+          </Link>
+          <Link href="/wallet">
+            <Button className="w-full bg-transparent" variant="outline">
+              <Wallet className="mr-2 h-4 w-4" />
+              Withdraw Funds
+            </Button>
+          </Link>
+        </div>
+      </Card>
+      {/* Top Investors */}
+      <Card className="p-6">
+        <h2 className="text-lg font-semibold mb-6">Top Investors</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <Users className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">David Park</p>
+                <p className="text-xs text-muted-foreground">AI-Powered Financial Assistant</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-foreground">$150,000</p>
+              <p className="text-xs text-muted-foreground">5% equity</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <Users className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Sarah Lee</p>
+                <p className="text-xs text-muted-foreground">HealthTech Revolution</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-foreground">$120,000</p>
+              <p className="text-xs text-muted-foreground">4% equity</p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center">
+                <Users className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">Michael Chen</p>
+                <p className="text-xs text-muted-foreground">Eco-Friendly Packaging</p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-foreground">$100,000</p>
+              <p className="text-xs text-muted-foreground">3% equity</p>
+            </div>
+          </div>
+        </div>
+      </Card>
+    </div>
+  </div>
   )
 }
 
