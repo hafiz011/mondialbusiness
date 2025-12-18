@@ -172,3 +172,210 @@ export default function NewIdeaPage() {
     </div>
   )
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// "use client"
+
+// import { useState } from "react"
+// import { Card } from "@/components/ui/card"
+// import { Button } from "@/components/ui/button"
+// import { Input } from "@/components/ui/input"
+// import { Label } from "@/components/ui/label"
+// import { Textarea } from "@/components/ui/textarea"
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@/components/ui/select"
+// import { ArrowLeft, Plus, Trash2 } from "lucide-react"
+// import Link from "next/link"
+// import { createIdea } from "@/services/idea.service"
+// import type { CreateIdeaRequest } from "@/types/idea"
+
+// interface Milestone {
+//   title: string
+//   description: string
+//   targetDate: string
+// }
+
+// export default function NewIdeaPage() {
+//   const [loading, setLoading] = useState(false)
+
+//   const [form, setForm] = useState<Omit<CreateIdeaRequest, "milestones">>({
+//     title: "",
+//     summary: "",
+//     stage: "Idea",
+//     marketSize: "",
+//     problem: "",
+//     solution: "",
+//     revenueModel: "",
+//     fundingRequired: 0,
+//     equityOffered: 0,
+//   })
+
+//   const [milestones, setMilestones] = useState<Milestone[]>([
+//     { title: "", description: "", targetDate: "" },
+//   ])
+
+//   /* ---------------- Handlers ---------------- */
+
+//   const handleChange = (
+//     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+//   ) => {
+//     const { id, value } = e.target
+//     setForm((prev) => ({ ...prev, [id]: value }))
+//   }
+
+//   const handleStageChange = (value: "Idea" | "MVP" | "Growth") => {
+//     setForm((prev) => ({ ...prev, stage: value }))
+//   }
+
+//   const handleMilestoneChange = (
+//     index: number,
+//     field: keyof Milestone,
+//     value: string
+//   ) => {
+//     const updated = [...milestones]
+//     updated[index][field] = value
+//     setMilestones(updated)
+//   }
+
+//   const addMilestone = () => {
+//     setMilestones([...milestones, { title: "", description: "", targetDate: "" }])
+//   }
+
+//   const removeMilestone = (index: number) => {
+//     setMilestones(milestones.filter((_, i) => i !== index))
+//   }
+
+//   /* ---------------- Submit ---------------- */
+
+//   const handleSubmit = async (e: React.FormEvent) => {
+//     e.preventDefault()
+//     setLoading(true)
+
+//     try {
+//       const payload: CreateIdeaRequest = {
+//         ...form,
+//         fundingRequired: Number(form.fundingRequired),
+//         equityOffered: Number(form.equityOffered),
+//         milestones,
+//       }
+
+//       const res = await createIdea(payload)
+//       alert(res.message || "Idea submitted successfully")
+
+//     } catch (err: any) {
+//       console.error(err)
+//       alert("Failed to submit idea")
+//     } finally {
+//       setLoading(false)
+//     }
+//   }
+
+//   /* ---------------- UI ---------------- */
+
+//   return (
+//     <div className="flex-1 overflow-y-auto">
+//       <div className="p-6 space-y-6">
+//         <Link href="/ideas">
+//           <Button variant="ghost" size="sm">
+//             <ArrowLeft className="mr-2 h-4 w-4" />
+//             Back to Ideas
+//           </Button>
+//         </Link>
+
+//         <form className="space-y-6" onSubmit={handleSubmit}>
+//           {/* BASIC INFO */}
+//           <Card className="p-6 space-y-6">
+//             <h3 className="text-lg font-semibold">Basic Information</h3>
+
+//             <Label htmlFor="title">Idea Title *</Label>
+//             <Input id="title" value={form.title} onChange={handleChange} required />
+
+//             <Label htmlFor="summary">Summary *</Label>
+//             <Textarea id="summary" value={form.summary} onChange={handleChange} required />
+
+//             <Label>Stage *</Label>
+//             <Select value={form.stage} onValueChange={handleStageChange}>
+//               <SelectTrigger>
+//                 <SelectValue />
+//               </SelectTrigger>
+//               <SelectContent>
+//                 <SelectItem value="Idea">Idea</SelectItem>
+//                 <SelectItem value="MVP">MVP</SelectItem>
+//                 <SelectItem value="Growth">Growth</SelectItem>
+//               </SelectContent>
+//             </Select>
+
+//             <Label htmlFor="marketSize">Market Size *</Label>
+//             <Input id="marketSize" value={form.marketSize} onChange={handleChange} />
+//           </Card>
+
+//           {/* FUNDING */}
+//           <Card className="p-6 space-y-4">
+//             <Label htmlFor="fundingRequired">Funding Required</Label>
+//             <Input id="fundingRequired" type="number" onChange={handleChange} />
+
+//             <Label htmlFor="equityOffered">Equity Offered (%)</Label>
+//             <Input id="equityOffered" type="number" onChange={handleChange} />
+//           </Card>
+
+//           {/* MILESTONES */}
+//           <Card className="p-6 space-y-4">
+//             <div className="flex justify-between">
+//               <h3 className="font-semibold">Milestones</h3>
+//               <Button type="button" variant="outline" size="sm" onClick={addMilestone}>
+//                 <Plus className="h-4 w-4 mr-1" /> Add
+//               </Button>
+//             </div>
+
+//             {milestones.map((m, i) => (
+//               <div key={i} className="border p-4 rounded-lg space-y-2">
+//                 <Input
+//                   placeholder="Title"
+//                   value={m.title}
+//                   onChange={(e) => handleMilestoneChange(i, "title", e.target.value)}
+//                 />
+//                 <Textarea
+//                   placeholder="Description"
+//                   value={m.description}
+//                   onChange={(e) => handleMilestoneChange(i, "description", e.target.value)}
+//                 />
+//                 <Input
+//                   type="date"
+//                   value={m.targetDate}
+//                   onChange={(e) => handleMilestoneChange(i, "targetDate", e.target.value)}
+//                 />
+//                 {milestones.length > 1 && (
+//                   <Button type="button" variant="ghost" onClick={() => removeMilestone(i)}>
+//                     <Trash2 className="h-4 w-4 text-destructive" />
+//                   </Button>
+//                 )}
+//               </div>
+//             ))}
+//           </Card>
+
+//           <Button type="submit" disabled={loading} className="w-full">
+//             {loading ? "Submitting..." : "Submit for Review"}
+//           </Button>
+//         </form>
+//       </div>
+//     </div>
+//   )
+// }
