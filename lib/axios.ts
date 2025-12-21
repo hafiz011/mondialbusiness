@@ -2,8 +2,8 @@ import axios from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
 
 const instance = axios.create({
-  // baseURL: "https://localhost:7264/api",
-  baseURL: "https://api.mondialbusiness.eu/api",
+  baseURL: "https://localhost:7264/api",
+  // baseURL: "https://api.mondialbusiness.eu/api",
   headers: {
     "Content-Type": "application/json",
   },
