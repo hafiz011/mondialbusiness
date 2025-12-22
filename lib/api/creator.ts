@@ -4,6 +4,7 @@ import api from "@/lib/axios"
 import type { Idea } from "@/types/idea"
 import type { CreatorDashboardResponse } from "@/types/creator-dashboard"
 import type { CreateIdeaRequest } from "@/types/CreateIdeaRequest"
+import { Investment } from "../mock-data"
 
 // Optional: common response shape if your backend nests data
 interface ApiResponse<T = unknown> {
@@ -23,15 +24,15 @@ export const getIdeaById = async (id: string): Promise<Idea> => {
   const res = await api.get<Idea>(`/creators/ideas/${id}`)
   return res.data
 }
-// export const getIdeaById = async (id: string): Promise<Idea> => {
-//   const res = await api.get<ApiResponse<Idea>>("/creators/ideas/${id}")
-//   if (!res.data.data) throw new Error("Idea not found")
-//   return res.data.data
-// }
 
+// Get investments for a specific idea
+export const getIdeaInvestments = async (id: string): Promise<Investment[]> => {
+  const res = await api.get<Investment[]>(`/creators/${id}/investments`)
+  return res.data
+}
 // Update an existing business idea
 export const updateIdea = async (id: string, data: CreateIdeaRequest): Promise<void> => {
-  await api.put(`/ideas/${id}`, data)
+  await api.put(`/creators/ideas/${id}`, data)
 }
 
 

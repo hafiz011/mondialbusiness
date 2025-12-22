@@ -1,34 +1,90 @@
+// app/(creator)/ideas/[id]/page.tsx
 
-import { Card } from "@/components/ui/card"
+"use client"
+
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { mockIdeas, mockInvestments } from "@/lib/mock-data"
-import { ArrowLeft, CheckCircle2, Clock, Users } from "lucide-react"
+import { ArrowLeft, DollarSign, Users, Calendar } from "lucide-react"
 import Link from "next/link"
-import { notFound } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
+import { getIdeaById, getIdeaInvestments } from "@/lib/api/creator"
+import type { Idea } from "@/types/idea"
+import type { Investment } from "@/types/investment"
 
-export default async function IdeaDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
-  const { id } = await params
-  const idea = mockIdeas.find((i) => i.id === id)
+export default function IdeaDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const ideaId = params.id as string
 
-  if (!idea) {
-    notFound()
+  const [idea, setIdea] = useState<Idea | null>(null)
+  const [investments, setInvestments] = useState<Investment[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchIdea = async () => {
+      if (!ideaId) return
+
+     try {
+        setLoading(true)
+
+        // Parallel API calls for better performance
+        const [ideaData, investmentData] = await Promise.all([
+          getIdeaById(ideaId),
+          getIdeaInvestments(ideaId).catch(() => [] as Investment[]) // fallback to empty array if no investments
+        ])
+
+        setIdea(ideaData)
+        setInvestments(investmentData)
+      } catch (err) {
+        console.error("Failed to load idea details:", err)
+        alert("Failed to load idea details")
+        router.push("/ideas")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchIdea()
+  }, [ideaId, router])
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto" />
+          <p className="text-lg text-muted-foreground">Loading idea details...</p>
+        </div>
+      </div>
+    )
   }
 
-  const ideaInvestments = mockInvestments.filter((inv) => inv.ideaName === idea.title)
-  const progress = (idea.totalRaised / idea.fundingRequired) * 100
-  const equitySold = ideaInvestments.reduce((acc, inv) => acc + inv.equityPercentage, 0)
+  if (!idea) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-lg text-muted-foreground">Idea not found</p>
+      </div>
+    )
+  }
+
+  const progress = idea.fundingRequired > 0 
+    ? (idea.totalRaised / idea.fundingRequired) * 100 
+    : 0
+
+// Calculate total equity sold from real investments
+  const totalEquitySold = investments.reduce((sum, inv) => sum + inv.equityPercentage, 0)
+  const equityAvailable = idea.equityOffered - totalEquitySold
+
+  // Group investments by round
+  const rounds = Array.from(new Set(investments.map(inv => inv.roundName)))
 
   return (
     <div className="flex-1 overflow-y-auto">
-
       <div className="p-6 space-y-6">
+        {/* Header */}
         <div className="flex items-center gap-4">
           <Link href="/ideas">
             <Button variant="ghost" size="sm">
@@ -36,18 +92,21 @@ export default async function IdeaDetailPage({
               Back to Ideas
             </Button>
           </Link>
-          <Badge variant={idea.status === "Approved" ? "default" : "secondary"}>{idea.status}</Badge>
+          <Badge variant={idea.status === "Approved" ? "default" : "secondary"}>
+            {idea.status}
+          </Badge>
           <Badge variant="outline">{idea.stage}</Badge>
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList>
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="milestones">Milestones</TabsTrigger>
             <TabsTrigger value="rounds">Investment Rounds</TabsTrigger>
             <TabsTrigger value="investors">Investors</TabsTrigger>
           </TabsList>
 
+          {/* Overview */}
           <TabsContent value="overview" className="space-y-6">
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
               <Card className="lg:col-span-2 p-6 space-y-6">
@@ -69,18 +128,22 @@ export default async function IdeaDetailPage({
                 <Card className="p-6">
                   <h3 className="text-lg font-semibold text-foreground mb-4">Funding Progress</h3>
                   <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">Total Raised</span>
-                        <span className="font-semibold text-accent">${idea.totalRaised.toLocaleString()}</span>
-                      </div>
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="text-muted-foreground">Target Amount</span>
-                        <span className="font-semibold text-foreground">${idea.fundingRequired.toLocaleString()}</span>
-                      </div>
-                      <Progress value={progress} className="h-3" />
-                      <p className="text-xs text-muted-foreground mt-2 text-center">{progress.toFixed(1)}% funded</p>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-muted-foreground">Total Raised</span>
+                      <span className="font-semibold text-emerald-500">
+                        ${idea.totalRaised.toLocaleString()}
+                      </span>
                     </div>
+                    <div className="flex justify-between text-sm mb-2">
+                      <span className="text-muted-foreground">Target Amount</span>
+                      <span className="font-semibold text-foreground">
+                        ${idea.fundingRequired.toLocaleString()}
+                      </span>
+                    </div>
+                    <Progress value={progress} className="h-3" />
+                    <p className="text-xs text-muted-foreground mt-2 text-center">
+                      {progress.toFixed(1)}% funded
+                    </p>
                   </div>
                 </Card>
 
@@ -93,15 +156,15 @@ export default async function IdeaDetailPage({
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Sold</span>
-                      <span className="text-sm font-semibold text-accent">{equitySold.toFixed(2)}%</span>
+                      <span className="text-sm font-semibold text-foreground">{totalEquitySold.toFixed(2)}%</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">Available</span>
                       <span className="text-sm font-semibold text-foreground">
-                        {(idea.equityOffered - equitySold).toFixed(2)}%
+                        {equityAvailable.toFixed(2)}%
                       </span>
                     </div>
-                    <Progress value={(equitySold / idea.equityOffered) * 100} className="h-2" />
+                    <Progress value={(totalEquitySold / idea.equityOffered) * 100 || 0} className="h-2" />
                   </div>
                 </Card>
 
@@ -122,133 +185,153 @@ export default async function IdeaDetailPage({
             </div>
           </TabsContent>
 
+          {/* Milestones */}
           <TabsContent value="milestones" className="space-y-6">
             <Card className="p-6">
               <h3 className="text-lg font-semibold text-foreground mb-6">Project Milestones</h3>
-              <div className="space-y-4">
-                {idea.milestones.map((milestone, index) => (
-                  <div key={milestone.id} className="flex gap-4">
-                    <div className="flex flex-col items-center">
-                      <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-full ${
-                          milestone.status === "Completed"
-                            ? "bg-accent text-accent-foreground"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {milestone.status === "Completed" ? (
-                          <CheckCircle2 className="h-5 w-5" />
-                        ) : (
-                          <Clock className="h-5 w-5" />
+              <div className="space-y-8">
+                {idea.milestones.length > 0 ? (
+                  idea.milestones.map((milestone, index) => (
+                    <div key={index} className="flex gap-4">
+                      <div className="flex flex-col items-center">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                          <Calendar className="h-5 w-5" />
+                        </div>
+                        {index < idea.milestones.length - 1 && (
+                          <div className="h-full w-0.5 bg-border my-2" />
                         )}
                       </div>
-                      {index < idea.milestones.length - 1 && <div className="h-full w-0.5 bg-border my-2" />}
-                    </div>
-                    <div className="flex-1 pb-8">
-                      <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 pb-8">
                         <h4 className="font-semibold text-foreground">{milestone.title}</h4>
-                        <Badge variant={milestone.status === "Completed" ? "default" : "secondary"}>
-                          {milestone.status}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">{milestone.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Target: {new Date(milestone.targetDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="rounds" className="space-y-6">
-            <div className="grid grid-cols-1 gap-6">
-              {idea.investmentRounds.map((round) => {
-                const roundProgress = (round.raised / round.targetAmount) * 100
-                return (
-                  <Card key={round.id} className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <h3 className="text-xl font-semibold text-foreground">{round.roundName}</h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {new Date(round.openDate).toLocaleDateString()} -{" "}
-                          {new Date(round.closeDate).toLocaleDateString()}
+                        <p className="text-sm text-muted-foreground mt-1">{milestone.description}</p>
+                        <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          Target: {milestone.targetDate}
                         </p>
                       </div>
-                      <Badge variant={round.status === "Open" ? "default" : "secondary"}>{round.status}</Badge>
                     </div>
-
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Target Amount</p>
-                        <p className="text-sm font-semibold text-foreground">${round.targetAmount.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Raised</p>
-                        <p className="text-sm font-semibold text-accent">${round.raised.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Min Investment</p>
-                        <p className="text-sm font-semibold text-foreground">${round.minInvestment.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground mb-1">Max Investment</p>
-                        <p className="text-sm font-semibold text-foreground">${round.maxInvestment.toLocaleString()}</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Progress</span>
-                        <span className="font-medium text-foreground">{roundProgress.toFixed(1)}%</span>
-                      </div>
-                      <Progress value={roundProgress} className="h-2" />
-                    </div>
-                  </Card>
-                )
-              })}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="investors" className="space-y-6">
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground">Investors</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {ideaInvestments.length} investors • $
-                    {ideaInvestments.reduce((acc, inv) => acc + inv.investedAmount, 0).toLocaleString()} total
-                  </p>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                {ideaInvestments.map((investment) => (
-                  <div
-                    key={investment.id}
-                    className="flex items-center justify-between p-4 border border-border rounded-lg"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                        <Users className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground">{investment.investorName}</p>
-                        <p className="text-sm text-muted-foreground">{investment.roundName}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-foreground">${investment.investedAmount.toLocaleString()}</p>
-                      <p className="text-sm text-muted-foreground">{investment.equityPercentage}% equity</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {new Date(investment.investedDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">No milestones defined yet</p>
+                )}
               </div>
             </Card>
+          </TabsContent>
+
+         {/* Investment Rounds Tab */}
+          <TabsContent value="rounds" className="space-y-6">
+            {rounds.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {rounds.map((roundName) => {
+                  const roundInvestments = investments.filter(inv => inv.roundName === roundName)
+                  const roundRaised = roundInvestments.reduce((sum, inv) => sum + inv.investedAmount, 0)
+                  const roundTarget = idea.fundingRequired // simple assumption, can be improved
+                  const roundProgress = roundTarget > 0 ? (roundRaised / roundTarget) * 100 : 0
+
+                  return (
+                    <Card key={roundName} className="p-6 hover:shadow-lg transition-shadow">
+                      <div className="flex items-center justify-between mb-6">
+                        <div>
+                          <h3 className="text-2xl font-bold">{roundName}</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {roundInvestments.length} investment{roundInvestments.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        <Badge variant="default">Active</Badge>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-sm text-muted-foreground">Raised</p>
+                            <p className="text-xl font-bold text-emerald-600">
+                              ${roundRaised.toLocaleString()}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-sm text-muted-foreground">Target</p>
+                            <p className="text-xl font-bold">${roundTarget.toLocaleString()}</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-muted-foreground">Progress</span>
+                            <span className="font-medium">{roundProgress.toFixed(1)}%</span>
+                          </div>
+                          <Progress value={roundProgress} className="h-3" />
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            ) : (
+              <Card className="p-16 text-center border-dashed border-2">
+                <DollarSign className="h-20 w-20 mx-auto text-muted-foreground mb-6" />
+                <h3 className="text-2xl font-semibold mb-3">No Investment Rounds Yet</h3>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  When investors start committing, investment rounds will appear here with progress tracking.
+                </p>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Investors Tab */}
+          <TabsContent value="investors" className="space-y-6">
+            {investments.length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Investors ({investments.length})
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Total invested: ${investments.reduce((sum, inv) => sum + inv.investedAmount, 0).toLocaleString()} • 
+                    Equity sold: {totalEquitySold.toFixed(2)}%
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {investments.map((inv) => (
+                      <div
+                        key={inv.id}
+                        className="flex items-center justify-between p-5 border rounded-lg hover:bg-muted/50 transition"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="h-14 w-14 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-bold text-xl">
+                            {inv.investorName.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-foreground">{inv.investorName}</p>
+                            <p className="text-sm text-muted-foreground">{inv.roundName}</p>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-emerald-600">
+                            ${inv.investedAmount.toLocaleString()}
+                          </p>
+                          <p className="text-sm text-muted-foreground">{inv.equityPercentage}% equity</p>
+                          <p className="text-xs text-muted-foreground mt-1 flex items-center justify-end gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {inv.investedDate}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="p-16 text-center border-dashed border-2">
+                <Users className="h-20 w-20 mx-auto text-muted-foreground mb-6" />
+                <h3 className="text-2xl font-semibold mb-3">No Investors Yet</h3>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  When investors commit to your idea, they will appear here with their investment details and equity stake.
+                </p>
+              </Card>
+            )}
           </TabsContent>
         </Tabs>
       </div>
